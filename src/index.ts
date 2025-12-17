@@ -355,7 +355,7 @@ export function schema<T>(json: TSToJSONSchema<T>): Schema<T> {
   };
 }
 
-interface Schema<T> extends Standard<T> {
+export interface Schema<T> extends Standard<T> {
   readonly validate: (
     value: unknown,
     options?: Standard.SchemaV1.Options | undefined,

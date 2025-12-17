@@ -25,7 +25,7 @@ interface MySchema {
 Declare a schema, then autocomplete the string:
 
 ```ts
-import { schema, Schema } from "@easrng/schema";
+import { schema, type Schema } from "@easrng/schema";
 
 interface MySchema {
   hello: "world";
@@ -39,7 +39,7 @@ const mySchema: Schema<MySchema> = schema("│");
 Use your new schema:
 
 ```ts
-import { schema, Schema } from "@easrng/schema";
+import { schema, type Schema } from "@easrng/schema";
 
 interface MySchema {
   hello: "world";

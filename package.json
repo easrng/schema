@@ -1,18 +1,34 @@
 {
   "name": "@easrng/schema",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "description": "Tiny, types-first schema validation for TypeScript.",
+  "homepage": "https://github.com/easrng/schema#readme",
+  "bugs": {
+    "url": "https://github.com/easrng/schema/issues"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/easrng/schema.git"
+  },
+  "license": "MIT",
+  "author": "easrng (https://easrng.net)",
   "type": "module",
   "exports": {
     ".": "./dist/index.js",
     "./package.json": "./package.json"
   },
-  "author": {
-    "name": "easrng",
-    "url": "https://easrng.net"
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "check": "node --run prettier -- --check && tsc && tsc -p tsconfig.test.json && eslint . && c8 --check-coverage --lines 100 --functions 100 --branches 100 node --test",
+    "build": "tsc -p tsconfig.build.json",
+    "prepack": "node --run check && node --run build",
+    "prettier": "prettier '**/*.ts' README.md *.json",
+    "fmt": "node --run prettier -- -w"
   },
-  "license": "MIT",
-  "packageManager": "pnpm@10.24.0",
   "devDependencies": {
     "@eslint/js": "^9.39.2",
     "@types/json-schema": "^7.0.15",
@@ -25,14 +41,5 @@
     "typescript-eslint": "^8.50.0",
     "zod": "^4.2.1"
   },
-  "scripts": {
-    "check": "node --run prettier -- --check && tsc && tsc -p tsconfig.test.json && eslint . && c8 --check-coverage --lines 100 --functions 100 --branches 100 node --test",
-    "build": "tsc -p tsconfig.build.json",
-    "prepack": "node --run check && node --run build",
-    "prettier": "prettier '**/*.ts' README.md *.json",
-    "fmt": "node --run prettier -- -w"
-  },
-  "files": [
-    "dist"
-  ]
+  "packageManager": "pnpm@10.24.0"
 }
