@@ -1,6 +1,6 @@
 {
   "name": "@easrng/schema",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Tiny, types-first schema validation for TypeScript.",
   "homepage": "https://github.com/easrng/schema#readme",
   "bugs": {

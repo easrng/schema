@@ -1,5 +1,4 @@
-import stringWidth from "string-width";
-import { wrapAnsi } from "../ansi-util.js";
+import { wrapAnsi, stringWidth } from "../ansi-util.js";
 import type { Segment } from "./inspect.js";
 import { styleText } from "./styleText.js";
 
