@@ -1,8 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { schema } from "../src/index.ts";
-import type { TSToJSONSchema } from "../src/type-level.ts";
-import type { SchemaV1 } from "../src/standard.ts";
+import { schema } from "../dist/index.js";
+import type { TSToJSONSchema } from "../dist/type-level.js";
+import type { SchemaV1 } from "../dist/standard.js";
 import { inspect } from "node:util";
 
 const hasIssues = (
@@ -19,6 +19,7 @@ const expectFailure = (result: SchemaV1.Result<unknown>, message: string) => {
   assert.ok(result.issues.length > 0, "expected at least one issue");
   assert.equal(result.issues[0]?.message, message);
   inspect(result.issues[0]);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   (result.issues[0] as any)[Symbol.for("nodejs.util.inspect.custom")](
     0,
     {},

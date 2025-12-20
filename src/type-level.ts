@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
 type UnionToJSONSchema<
   T,
   Acc extends readonly string[] = [],
@@ -522,13 +523,13 @@ declare namespace String {
     Acc extends StringAcc,
     Value extends string,
   > = MakeStringAcc<
-    Value extends `${bigint}`
+    Equal<Value, `${bigint}`> extends true
       ? {
           literalAcc: "";
           regexpAcc: `${Acc["regexpAcc"]}${TemplateTypeToRegexp["bigint"]}`;
           isRegexp: true;
         }
-      : Value extends `${number}`
+      : Equal<Value, `${number}`> extends true
         ? {
             literalAcc: "";
             regexpAcc: `${Acc["regexpAcc"]}${TemplateTypeToRegexp["number"]}`;

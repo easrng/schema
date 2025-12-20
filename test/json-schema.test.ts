@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import type { InputSchema, InputSchema2020 } from "../src/types.ts";
+import type { InputSchema, InputSchema2020 } from "../dist/types.js";
 import type { JSONSchema4, JSONSchema6, JSONSchema7 } from "json-schema";
 import type { JSONSchema as JSONSchema7Alt } from "json-schema-typed/draft-07";
 import type { JSONSchema as JSONSchema2019 } from "json-schema-typed/draft-2019-09";

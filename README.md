@@ -54,3 +54,43 @@ if (result.issues) {
   console.log(result.value);
 }
 ```
+
+## Standard Schema utilities
+
+This package also provides helper functions for any Standard Schema:
+
+```ts
+import { is } from "@easrng/schema/util";
+const s = "some string" as unknown;
+if (is(stringSchema, s)) {
+  console.log("works with TypeScript");
+  void s;
+  //   ^? const s: string
+}
+```
+
+```ts
+import { assert } from "@easrng/schema/pretty";
+import { schema, type Schema } from "@easrng/schema";
+
+const mySchema: Schema<{ prop: number }> = schema(
+  '{"type":"object","properties":{"prop":{"type":"number"}},"required":["prop"]}',
+);
+assert(mySchema, {
+  prop: "invalid value",
+});
+
+/**
+ * Prints:
+ *
+ *  × Schema validation failed:
+ *  ╭──┄┄
+ *  │ {
+ *  │   prop: 'invalid value'
+ *  ┊        ╶───────┬───────╴
+ *  ┊                ╰─ expected number
+ *  │ }
+ *  ╰──┄┄
+ *
+ */
+```

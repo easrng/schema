@@ -8,6 +8,7 @@ export default defineConfig(
   eslint.configs.recommended,
   tseslint.configs.recommended,
   {
+    files: ["src/index.ts"],
     rules: {
       "no-restricted-syntax": [
         "error",
@@ -18,12 +19,6 @@ export default defineConfig(
         },
       ],
       "@typescript-eslint/no-explicit-any": "off",
-    },
-  },
-  {
-    files: ["**/*.test.ts"],
-    rules: {
-      "no-restricted-syntax": "off",
     },
   },
   { ignores: ["dist"] }

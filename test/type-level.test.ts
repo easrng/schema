@@ -1,5 +1,5 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import type { TSToJSONSchema } from "../src/type-level.ts";
+import type { TSToJSONSchema } from "../dist/type-level.js";
 
 type ExpectEqual<_ extends E, E> = never;
 

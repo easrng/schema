@@ -1,6 +1,6 @@
 {
   "name": "@easrng/schema",
-  "version": "0.0.2",
+  "version": "0.0.3",
   "description": "Tiny, types-first schema validation for TypeScript.",
   "homepage": "https://github.com/easrng/schema#readme",
   "bugs": {
@@ -15,6 +15,8 @@
   "type": "module",
   "exports": {
     ".": "./dist/index.js",
+    "./util": "./dist/util.js",
+    "./pretty": "./dist/pretty.js",
     "./package.json": "./package.json"
   },
   "main": "./dist/index.js",
@@ -23,8 +25,8 @@
     "dist"
   ],
   "scripts": {
-    "check": "node --run prettier -- --check && tsc && tsc -p tsconfig.test.json && eslint . && c8 --check-coverage --lines 100 --functions 100 --branches 100 node --test",
-    "build": "tsc -p tsconfig.build.json",
+    "check": "node --run prettier -- --check && tsc && eslint . && c8 --check-coverage --lines 100 --functions 100 --branches 100 node --test",
+    "build": "tsc -p tsconfig.build.json; cp src/ansi-util.* dist",
     "prepack": "node --run check && node --run build",
     "prettier": "prettier '**/*.ts' README.md *.json",
     "fmt": "node --run prettier -- -w"
@@ -39,7 +41,10 @@
     "prettier": "^3.7.4",
     "typescript": "^5.9.3",
     "typescript-eslint": "^8.50.0",
-    "zod": "^4.2.1"
+    "valibot": "^1.2.0",
+    "zod": "^4.2.1",
+    "string-width": "^8.1.0",
+    "wrap-ansi": "^9.0.2"
   },
   "packageManager": "pnpm@10.24.0"
 }

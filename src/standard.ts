@@ -1,12 +1,12 @@
 /* eslint-disable @typescript-eslint/no-empty-object-type */
 /* eslint-disable @typescript-eslint/no-namespace */
 /** The Standard Typed interface. This is a base type extended by other specs. */
-interface TypedV1<Input = unknown, Output = Input> {
+export interface TypedV1<Input = unknown, Output = Input> {
   /** The Standard properties. */
   readonly "~standard": TypedV1.Props<Input, Output>;
 }
 
-declare namespace TypedV1 {
+export declare namespace TypedV1 {
   /** The Standard Typed properties interface. */
   export interface Props<Input = unknown, Output = Input> {
     /** The version number of the standard. */

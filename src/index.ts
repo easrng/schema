@@ -298,35 +298,37 @@ const genericConverter = (
   }
 };
 
-class StandardIssue {
-  message: string;
-  #path: List<PropertyKey> | null;
-  #pathArray?: PropertyKey[];
-  constructor(message: string, path: List<PropertyKey> | null) {
-    this.message = message;
-    this.#path = path;
-  }
-  get path() {
-    const pathArray = this.#pathArray;
-    if (pathArray) {
-      return pathArray;
+const StandardIssue = /** @__PURE__ */ (() =>
+  class StandardIssue {
+    message: string;
+    #path: List<PropertyKey> | null;
+    #pathArray?: PropertyKey[] | undefined | null;
+    constructor(message: string, path: List<PropertyKey> | null) {
+      this.message = message;
+      this.#path = path;
+      this.#pathArray = null;
     }
-    return (this.#pathArray = this.#path?.toArray().reverse() ?? []);
-  }
-  [Symbol.for("nodejs.util.inspect.custom")](
-    _depth: number,
-    options: any,
-    inspect: (object: any, options?: any) => string,
-  ) {
-    return inspect(
-      { message: this.message, path: this.path },
-      {
-        ...options,
-        depth: options?.depth ? options.depth - 1 : null,
-      },
-    );
-  }
-}
+    get path() {
+      const pathArray = this.#pathArray;
+      if (pathArray !== null) {
+        return pathArray;
+      }
+      return (this.#pathArray = this.#path?.toArray().reverse() ?? undefined);
+    }
+    [Symbol.for("nodejs.util.inspect.custom")](
+      _depth: number,
+      options: any,
+      inspect: (object: any, options?: any) => string,
+    ) {
+      return inspect(
+        { message: this.message, path: this.path },
+        {
+          ...options,
+          depth: options?.depth ? options.depth - 1 : null,
+        },
+      );
+    }
+  })();
 const issueToStandardIssue = (issue: Issue): Standard.SchemaV1.Issue =>
   new StandardIssue(issue.message, issue.path);
 const genericValidate = (validator: BoundValidator, value: unknown) => {
