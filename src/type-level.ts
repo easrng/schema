@@ -13,60 +13,89 @@ type UnbrandPrimitive<T, P> = T extends P & (infer T extends {})
     ? T
     : P
   : T;
+/* type SymbolNames = {
+  [K in keyof SymbolConstructor as SymbolConstructor[K] extends symbol
+    ? SymbolConstructor[K]
+    : never]: K;
+}; */
 type Values<T> = T[keyof T];
-type KeysOf<T> = Values<{
-  [K in keyof T as TSToJSONSchema<K>]: [K];
-}>;
-type TypeToJSONSchema<T> = [T] extends [boolean]
-  ? [boolean] extends [UnbrandPrimitive<T, boolean>]
-    ? '{"type":"boolean"}'
-    : `{"const":${T}}`
-  : T extends number
+type KeysOf<T> = T extends infer E
+  ? Values<{
+      [K in keyof E as TSToJSONSchema<K>]: [K];
+    }>
+  : never;
+type TypeToJSONSchema<T> = [
+  [T] extends [boolean]
+    ? [boolean] extends [UnbrandPrimitive<T, boolean>]
+      ? '{"type":"boolean"}'
+      : `{"const":${T}}`
+    : never,
+  T extends number
     ? number extends UnbrandPrimitive<T, number>
       ? '{"type":"number"}'
       : `{"const":${T}}`
-    : T extends string
-      ? string extends UnbrandPrimitive<T, string>
-        ? '{"type":"string"}'
-        : String.ToJSONSchema<T>
-      : T extends null
-        ? '{"type":"null"}'
-        : Equal<[T, keyof T], [object, keyof object]> extends true
-          ? 1 extends T
-            ? '{"not":{"type":"null"}}'
-            : '{"type":"object"}'
-          : T extends readonly unknown[]
-            ? Equal<T["length"], number> extends true
-              ? `{"type":"array","items":${TSToJSONSchema<T[number]>}}`
-              : `{"type":"array","additionalItems":false,"items":[${Tuple.Join<
-                  {
-                    [K in keyof T]: TSToJSONSchema<T[K]>;
-                  },
-                  ","
-                >}]}`
-            : T extends (...args: never[]) => unknown
-              ? `{"error":"Functions cannot be represented in JSON Schema"}`
-              : T extends new (...args: never[]) => unknown
-                ? `{"error":"Constructors cannot be represented in JSON Schema"}`
-                : T extends symbol
-                  ? `{"error":"Symbols cannot be represented in JSON Schema"}`
-                  : T extends bigint
-                    ? `{"error":"BigInts cannot be represented in JSON Schema"}`
-                    : T extends undefined
-                      ? `{"error":"Undefined cannot be represented in JSON Schema"}`
-                      : Equal<T, void> extends true
-                        ? `{"error":"Void cannot be represented in JSON Schema"}`
-                        : `{"type":"object"${Properties<T>}${PatternProperties<T>}${AdditionalProperties<T>}${MaybeRequired<
-                            UnionToKeys<
-                              keyof {
-                                [K in keyof T as [
-                                  Extract<T[K], undefined>,
-                                ] extends [never]
-                                  ? String.ToKey<`${Exclude<K, symbol>}`>
-                                  : never]: never;
-                              }
-                            >
-                          >}}`;
+    : never,
+  T extends string
+    ? string extends UnbrandPrimitive<T, string>
+      ? '{"type":"string"}'
+      : String.ToJSONSchema<T>
+    : never,
+  T extends null ? '{"type":"null"}' : never,
+  T extends bigint
+    ? bigint extends UnbrandPrimitive<T, bigint>
+      ? '{"type":"bigint"}'
+      : `{"type":"bigint","const":"${T}"}`
+    : never,
+  T extends undefined ? `{"type":"undefined"}` : never,
+  T extends undefined | bigint | null | string | number | boolean
+    ? never
+    : Equal<T, void> extends true
+      ? // equivalent to unknown:
+        //
+        //   declare const f1: () => void
+        //   const f2: () => unknown = f1
+        //   const f3: () => void = f2
+        //
+        `{}`
+      : Equal<[T, keyof T], [object, keyof object]> extends true
+        ? 1 extends T
+          ? '{"not":{"type":"null"}}'
+          : '{"type":"object"}'
+        : T extends readonly unknown[]
+          ? Equal<T["length"], number> extends true
+            ? `{"type":"array","items":${TSToJSONSchema<T[number]>}}`
+            : `{"type":"array","additionalItems":false,"items":[${Tuple.Join<
+                {
+                  [K in keyof T]: K extends number | `${number}`
+                    ? TSToJSONSchema<T[K]> extends infer E extends string
+                      ? E
+                      : never
+                    : never;
+                },
+                ","
+              >}]}`
+          : T extends (...args: never[]) => unknown
+            ? `{"error":"Functions cannot be represented in JSON Schema"}`
+            : T extends new (...args: never[]) => unknown
+              ? `{"error":"Constructors cannot be represented in JSON Schema"}`
+              : T extends ReadonlyMap<infer K, infer V>
+                ? `{"type":"map","items":${TSToJSONSchema<[K, V]>}}`
+                : T extends ReadonlySet<infer V>
+                  ? `{"type":"set","items":${TSToJSONSchema<V>}}`
+                  : T extends symbol
+                    ? `{"error":"Symbols cannot be represented in JSON Schema"}`
+                    : `{"type":"object"${Properties<T>}${PatternProperties<T>}${AdditionalProperties<T>}${MaybeRequired<
+                        UnionToKeys<
+                          keyof {
+                            [K in keyof T as [
+                              Extract<T[K], undefined>,
+                            ] extends [never]
+                              ? String.ToKey<`${Exclude<K, symbol>}`>
+                              : never]: never;
+                          }
+                        >
+                      >}}`,
+][number];
 type MaybeRequired<T extends string> = T extends "[]" ? "" : `,"required":${T}`;
 // eslint bug??
 // eslint-disable-next-line @typescript-eslint/no-unused-vars

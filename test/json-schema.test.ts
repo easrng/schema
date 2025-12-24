@@ -1,5 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
-import type { InputSchema, InputSchema2020 } from "../dist/types.js";
+import type {
+  InputSchema,
+  InputSchema7,
+  InputSchema2020,
+} from "../dist/types.js";
 import type { JSONSchema4, JSONSchema6, JSONSchema7 } from "json-schema";
 import type { JSONSchema as JSONSchema7Alt } from "json-schema-typed/draft-07";
 import type { JSONSchema as JSONSchema2019 } from "json-schema-typed/draft-2019-09";
@@ -13,7 +17,7 @@ type ConcreteKeys<T> = keyof {
     : never]: never;
 };
 
-const inputSchema = {} as InputSchema;
+const inputSchema = {} as InputSchema7;
 const _supports4: [JSONSchema4, "error" | "const"] = [
   inputSchema,
   "" as Exclude<keyof InputSchema, ConcreteKeys<Extract<JSONSchema4, object>>>,

@@ -52,17 +52,13 @@ type BoundValidator = (
   issues: List<Issue>,
 ) => void;
 
-const nullValidator: Validator = (path, value, issues) =>
-  value !== null && issues.push({ path, message: "expected null" });
-const booleanValidator: Validator = (path, value, issues) =>
-  typeof value !== "boolean" &&
-  issues.push({ path, message: "expected boolean" });
-const numberValidator: Validator = (path, value, issues) =>
-  typeof value !== "number" &&
-  issues.push({ path, message: "expected number" });
-const stringValidator: Validator = (path, value, issues) =>
-  typeof value !== "string" &&
-  issues.push({ path, message: "expected string" });
+const typeofValidator: Validator<[type: string]> = (
+  type,
+  path,
+  value,
+  issues,
+) =>
+  typeof value !== type && issues.push({ path, message: "expected " + type });
 const patternValidator: Validator<[pattern: RegExp]> = (
   pattern,
   path,
@@ -71,14 +67,18 @@ const patternValidator: Validator<[pattern: RegExp]> = (
 ) =>
   (typeof value !== "string" || !pattern.test(value)) &&
   issues.push({ path, message: `expected string matching ${pattern}` });
-const constValidator: Validator<[expected: unknown]> = (
+const constValidator: Validator<[expected: unknown, formatted: unknown]> = (
   expected,
+  formatted,
   path,
   value,
   issues,
 ) =>
   value !== expected &&
-  issues.push({ path, message: `expected ${JSON.stringify(expected)}` });
+  issues.push({
+    path,
+    message: `expected ${formatted}`,
+  });
 const anyOfValidator: Validator<[validators: BoundValidator[]]> = (
   validators,
   path,
@@ -187,14 +187,35 @@ const objectValidator: Validator<
 };
 const neverValidator: Validator = (path, _value, issues) =>
   issues.push({ path, message: "expected never" });
+const containerValidator: Validator<
+  [
+    name: string,
+    brandCheck: (this: any, ...args: any[]) => void,
+    subValidator: BoundValidator,
+  ]
+> = (name, brandCheck, subValidator, path, value, issues) => {
+  try {
+    brandCheck.call(value, null);
+    subValidator(path, [...(value as Iterable<unknown>)], issues);
+  } catch {
+    issues.push({ path, message: "expected " + name });
+  }
+};
 const noopValidator: BoundValidator = () => {};
-
+const setHas = Set.prototype.has;
+const mapHas = Map.prototype.has;
 function makeValidator(schema: InputSchema): BoundValidator {
   if (schema.error !== undefined) {
     throw new TypeError(schema.error);
   }
   if (schema.const !== undefined) {
-    return constValidator.bind(null, schema.const);
+    return constValidator.bind(
+      null,
+      schema.type === "bigint" ? BigInt(schema.const) : schema.const,
+      schema.type === "bigint"
+        ? schema.const + "n"
+        : JSON.stringify(schema.const),
+    );
   }
   if (schema.anyOf !== undefined) {
     const validators = schema.anyOf.map(makeValidator);
@@ -209,16 +230,34 @@ function makeValidator(schema: InputSchema): BoundValidator {
   if (schema.type !== undefined) {
     switch (schema.type) {
       case "null":
-        return nullValidator;
+        return constValidator.bind(null, null, null);
+      case "undefined":
+        return constValidator.bind(null, undefined, undefined);
+      case "bigint":
+        return typeofValidator.bind(null, "bigint");
       case "boolean":
-        return booleanValidator;
+        return typeofValidator.bind(null, "boolean");
       case "number":
-        return numberValidator;
+        return typeofValidator.bind(null, "number");
       case "string":
         if (schema.pattern !== undefined) {
           return patternValidator.bind(null, new RegExp(schema.pattern));
         }
-        return stringValidator;
+        return typeofValidator.bind(null, "string");
+      case "map":
+        return containerValidator.bind(
+          null,
+          "map",
+          mapHas,
+          arrayValidator.bind(null, makeValidator(schema.items as InputSchema)),
+        );
+      case "set":
+        return containerValidator.bind(
+          null,
+          "set",
+          setHas,
+          arrayValidator.bind(null, makeValidator(schema.items as InputSchema)),
+        );
       case "array":
         if (Array.isArray(schema.items)) {
           const validators = schema.items.map(makeValidator);
@@ -261,10 +300,22 @@ function makeValidator(schema: InputSchema): BoundValidator {
   return noopValidator;
 }
 
+const assertJsonSchemaType = (_key: string, value: InputSchema) => {
+  if (
+    value.type === "bigint" ||
+    value.type === "undefined" ||
+    value.type === "map" ||
+    value.type === "set"
+  )
+    throw new TypeError(value.type + " cannot be represented in JSON Schema");
+  return value;
+};
+
 const jsonSchema2020Replacer = (
   _key: string,
   value: InputSchema,
 ): InputSchema2020 => {
+  assertJsonSchemaType(_key, value);
   if (Array.isArray(value.items)) {
     (value as Record<string, unknown>).prefixItems = value.items;
     delete value.items;
@@ -275,7 +326,8 @@ const jsonSchema4Replacer = (
   _key: string,
   value: InputSchema,
 ): InputSchema4 => {
-  return value.const ? { enum: [value.const] } : value;
+  assertJsonSchemaType(_key, value);
+  return value.const ? { enum: [value.const] } : (value as InputSchema4);
 };
 const genericConverter = (
   json: string,
@@ -287,13 +339,13 @@ const genericConverter = (
     case "draft-06":
     case "draft-07":
     case "draft-2019-09":
-      return JSON.parse(json);
+      return JSON.parse(json, assertJsonSchemaType);
     case "draft-04":
     case "openapi-3.0":
       return JSON.parse(json, jsonSchema4Replacer);
     default:
       throw new Error(
-        "JSON Schema version " + options.target + " is not supported.",
+        "JSON Schema version " + options.target + " is not supported",
       );
   }
 };

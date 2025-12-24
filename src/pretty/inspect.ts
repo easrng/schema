@@ -195,7 +195,12 @@ export function prettyPrint(
           valueIsMap,
           !isEntry && i !== allKeys.length,
           !(key in (effectiveValue as Record<PropertyKey, unknown>)),
-        ).map((e) => ({ ...e, value: e.value.replaceAll("\n", "\n  ") })),
+        ).map((e) => ({
+          ...e,
+          value: isEntry
+            ? e.value.replace(/\n\s*/, " ")
+            : e.value.replaceAll("\n", "\n  "),
+        })),
       );
     }
     segments.push({

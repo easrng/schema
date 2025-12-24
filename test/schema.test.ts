@@ -4,6 +4,7 @@ import { schema } from "../dist/index.js";
 import type { TSToJSONSchema } from "../dist/type-level.js";
 import type { SchemaV1 } from "../dist/standard.js";
 import { inspect } from "node:util";
+import { typiaValidateMap, typiaValidateSet } from "./typia.compiled.js";
 
 const hasIssues = (
   result: SchemaV1.Result<unknown>,
@@ -69,6 +70,30 @@ runSchemaCase<boolean>({
   json: '{"type":"boolean"}',
   successes: [true, false],
   failures: [{ value: 1, message: "expected boolean" }],
+});
+
+runSchemaCase<undefined>({
+  name: "undefined schema",
+  json: '{"type":"undefined"}',
+  successes: [undefined],
+  failures: [{ value: null, message: "expected undefined" }],
+});
+
+runSchemaCase<bigint>({
+  name: "bigint schema",
+  json: '{"type":"bigint"}',
+  successes: [1n, 0n, -1n],
+  failures: [{ value: 1, message: "expected bigint" }],
+});
+
+runSchemaCase<1n>({
+  name: "bigint literal schema",
+  json: '{"type":"bigint","const":"1"}',
+  successes: [1n],
+  failures: [
+    { value: 1, message: "expected 1n" },
+    { value: 0n, message: "expected 1n" },
+  ],
 });
 
 runSchemaCase<string>({
@@ -205,6 +230,29 @@ runSchemaCase<Complex>({
   ],
 });
 
+runSchemaCase<Set<number>>({
+  name: "set schema",
+  json: '{"type":"set","items":{"type":"number"}}',
+  successes: [new Set(), new Set([1, 2, 3])],
+  failures: [
+    { value: 1, message: "expected set" },
+    { value: new Map(), message: "expected set" },
+    { value: new Set([1, 2, "a"]), message: "expected number" },
+  ],
+});
+
+runSchemaCase<Map<{ key: string }, number>>({
+  name: "map schema",
+  json: '{"type":"map","items":{"type":"array","additionalItems":false,"items":[{"type":"object","properties":{"key":{"type":"string"}},"required":["key"]},{"type":"number"}]}}',
+  successes: [new Map(), new Map([[{ key: "test" }, 1]])],
+  failures: [
+    { value: 1, message: "expected map" },
+    { value: new Set(), message: "expected map" },
+    { value: new Map([[{ key: 1 }, 1]]), message: "expected string" },
+    { value: new Map([[{ key: "test" }, "test"]]), message: "expected number" },
+  ],
+});
+
 runSchemaCase<() => void>({
   name: "function schema produces error",
   json: '{"error":"Functions cannot be represented in JSON Schema"}',
@@ -305,7 +353,41 @@ test("jsonSchema throws on unsupported version", () => {
   );
   assert.throws(
     () => exampleSchema["~standard"].jsonSchema.input({ target: "draft-fake" }),
-    { message: "JSON Schema version draft-fake is not supported." },
+    { message: "JSON Schema version draft-fake is not supported" },
+  );
+});
+
+test("jsonSchema throws on undefined schemas", () => {
+  const exampleSchema = schema<undefined>('{"type":"undefined"}');
+  assert.throws(
+    () => exampleSchema["~standard"].jsonSchema.input({ target: "draft-07" }),
+    { message: "undefined cannot be represented in JSON Schema" },
+  );
+});
+
+test("jsonSchema throws on map schemas", () => {
+  const exampleSchema = schema<Map<1, 1>>(
+    '{"type":"map","items":{"type":"array","additionalItems":false,"items":[{"const":1},{"const":1}]}}',
+  );
+  assert.throws(
+    () => exampleSchema["~standard"].jsonSchema.input({ target: "draft-07" }),
+    { message: "map cannot be represented in JSON Schema" },
+  );
+});
+
+test("jsonSchema throws on set schemas", () => {
+  const exampleSchema = schema<Set<1>>('{"type":"set","items":{"const":1}}');
+  assert.throws(
+    () => exampleSchema["~standard"].jsonSchema.input({ target: "draft-07" }),
+    { message: "set cannot be represented in JSON Schema" },
+  );
+});
+
+test("jsonSchema throws on bigint schemas", () => {
+  const exampleSchema = schema<bigint>('{"type":"bigint"}');
+  assert.throws(
+    () => exampleSchema["~standard"].jsonSchema.input({ target: "draft-07" }),
+    { message: "bigint cannot be represented in JSON Schema" },
   );
 });
 
@@ -350,15 +432,14 @@ test("issue paths: nested object properties match Zod", async () => {
 
   const invalidValue = { user: { name: "Alice", age: "not a number" } };
 
-  const standardResult =
-    await standardSchema["~standard"].validate(invalidValue);
+  const myResult = await standardSchema["~standard"].validate(invalidValue);
   const zodResult = await zodSchema["~standard"].validate(invalidValue);
 
-  const standardPaths = extractIssuePaths(standardResult);
+  const myPaths = extractIssuePaths(myResult);
   const zodPaths = extractIssuePaths(zodResult);
 
-  assert.deepEqual(standardPaths, zodPaths);
-  assert.deepEqual(standardPaths, [["user", "age"]]);
+  assert.deepEqual(myPaths, zodPaths);
+  assert.deepEqual(myPaths, [["user", "age"]]);
 });
 
 test("issue paths: array items match Zod", async () => {
@@ -369,15 +450,14 @@ test("issue paths: array items match Zod", async () => {
 
   const invalidValue = [1, 2, "three", 4, "five"];
 
-  const standardResult =
-    await standardSchema["~standard"].validate(invalidValue);
+  const myResult = await standardSchema["~standard"].validate(invalidValue);
   const zodResult = await zodSchema["~standard"].validate(invalidValue);
 
-  const standardPaths = extractIssuePaths(standardResult);
+  const myPaths = extractIssuePaths(myResult);
   const zodPaths = extractIssuePaths(zodResult);
 
-  assert.deepEqual(standardPaths, zodPaths);
-  assert.deepEqual(standardPaths, [[2], [4]]);
+  assert.deepEqual(myPaths, zodPaths);
+  assert.deepEqual(myPaths, [[2], [4]]);
 });
 
 test("issue paths: tuple elements match Zod", async () => {
@@ -388,15 +468,14 @@ test("issue paths: tuple elements match Zod", async () => {
 
   const invalidValue = ["ok", "not a number", false];
 
-  const standardResult =
-    await standardSchema["~standard"].validate(invalidValue);
+  const myResult = await standardSchema["~standard"].validate(invalidValue);
   const zodResult = await zodSchema["~standard"].validate(invalidValue);
 
-  const standardPaths = extractIssuePaths(standardResult);
+  const myPaths = extractIssuePaths(myResult);
   const zodPaths = extractIssuePaths(zodResult);
 
-  assert.deepEqual(standardPaths, zodPaths);
-  assert.deepEqual(standardPaths, [[1]]);
+  assert.deepEqual(myPaths, zodPaths);
+  assert.deepEqual(myPaths, [[1]]);
 });
 
 test("issue paths: nested arrays match Zod", async () => {
@@ -407,15 +486,14 @@ test("issue paths: nested arrays match Zod", async () => {
 
   const invalidValue = [[1, 2], [3, "four"], [5]];
 
-  const standardResult =
-    await standardSchema["~standard"].validate(invalidValue);
+  const myResult = await standardSchema["~standard"].validate(invalidValue);
   const zodResult = await zodSchema["~standard"].validate(invalidValue);
 
-  const standardPaths = extractIssuePaths(standardResult);
+  const myPaths = extractIssuePaths(myResult);
   const zodPaths = extractIssuePaths(zodResult);
 
-  assert.deepEqual(standardPaths, zodPaths);
-  assert.deepEqual(standardPaths, [[1, 1]]);
+  assert.deepEqual(myPaths, zodPaths);
+  assert.deepEqual(myPaths, [[1, 1]]);
 });
 
 test("issue paths: record/additionalProperties match Zod", async () => {
@@ -426,15 +504,14 @@ test("issue paths: record/additionalProperties match Zod", async () => {
 
   const invalidValue = { a: 1, b: "not a number", c: 3 };
 
-  const standardResult =
-    await standardSchema["~standard"].validate(invalidValue);
+  const myResult = await standardSchema["~standard"].validate(invalidValue);
   const zodResult = await zodSchema["~standard"].validate(invalidValue);
 
-  const standardPaths = extractIssuePaths(standardResult);
+  const myPaths = extractIssuePaths(myResult);
   const zodPaths = extractIssuePaths(zodResult);
 
-  assert.deepEqual(standardPaths, zodPaths);
-  assert.deepEqual(standardPaths, [["b"]]);
+  assert.deepEqual(myPaths, zodPaths);
+  assert.deepEqual(myPaths, [["b"]]);
 });
 
 test("issue paths: missing required property matches Zod", async () => {
@@ -448,15 +525,14 @@ test("issue paths: missing required property matches Zod", async () => {
 
   const invalidValue = { name: "Alice" };
 
-  const standardResult =
-    await standardSchema["~standard"].validate(invalidValue);
+  const myResult = await standardSchema["~standard"].validate(invalidValue);
   const zodResult = await zodSchema["~standard"].validate(invalidValue);
 
-  const standardPaths = extractIssuePaths(standardResult);
+  const myPaths = extractIssuePaths(myResult);
   const zodPaths = extractIssuePaths(zodResult);
 
-  assert.deepEqual(standardPaths, zodPaths);
-  assert.deepEqual(standardPaths, [["age"]]);
+  assert.deepEqual(myPaths, zodPaths);
+  assert.deepEqual(myPaths, [["age"]]);
 });
 
 test("issue paths: optional properties match Zod", async () => {
@@ -470,15 +546,14 @@ test("issue paths: optional properties match Zod", async () => {
 
   const invalidValue = { name: "Alice", age: "not a number" };
 
-  const standardResult =
-    await standardSchema["~standard"].validate(invalidValue);
+  const myResult = await standardSchema["~standard"].validate(invalidValue);
   const zodResult = await zodSchema["~standard"].validate(invalidValue);
 
-  const standardPaths = extractIssuePaths(standardResult);
+  const myPaths = extractIssuePaths(myResult);
   const zodPaths = extractIssuePaths(zodResult);
 
-  assert.deepEqual(standardPaths, zodPaths);
-  assert.deepEqual(standardPaths, [["age"]]);
+  assert.deepEqual(myPaths, zodPaths);
+  assert.deepEqual(myPaths, [["age"]]);
 });
 
 test("issue paths: pattern properties match Zod", async () => {
@@ -493,15 +568,14 @@ test("issue paths: pattern properties match Zod", async () => {
     "admin@test.org": 42,
   };
 
-  const standardResult =
-    await standardSchema["~standard"].validate(invalidValue);
+  const myResult = await standardSchema["~standard"].validate(invalidValue);
   const zodResult = await zodSchema["~standard"].validate(invalidValue);
 
-  const standardPaths = extractIssuePaths(standardResult);
+  const myPaths = extractIssuePaths(myResult);
   const zodPaths = extractIssuePaths(zodResult);
 
-  assert.deepEqual(standardPaths, zodPaths);
-  assert.deepEqual(standardPaths, [["user@example.com"]]);
+  assert.deepEqual(myPaths, zodPaths);
+  assert.deepEqual(myPaths, [["user@example.com"]]);
 });
 
 test("issue paths: anyOf/union with objects match Zod", async () => {
@@ -517,15 +591,14 @@ test("issue paths: anyOf/union with objects match Zod", async () => {
 
   const invalidValue = { type: "a", value: "not a number" };
 
-  const standardResult =
-    await standardSchema["~standard"].validate(invalidValue);
+  const myResult = await standardSchema["~standard"].validate(invalidValue);
   const zodResult = await zodSchema["~standard"].validate(invalidValue);
 
-  const standardPaths = extractIssuePaths(standardResult);
+  const myPaths = extractIssuePaths(myResult);
   const zodPaths = extractIssuePaths(zodResult);
 
   // Both should report issues at the root or within union branches
-  assert.ok(standardPaths.length > 0);
+  assert.ok(myPaths.length > 0);
   assert.ok(zodPaths.length > 0);
 });
 
@@ -545,15 +618,14 @@ test("issue paths: deeply nested object match Zod", async () => {
 
   const invalidValue = { a: { b: { c: { d: "not a number" } } } };
 
-  const standardResult =
-    await standardSchema["~standard"].validate(invalidValue);
+  const myResult = await standardSchema["~standard"].validate(invalidValue);
   const zodResult = await zodSchema["~standard"].validate(invalidValue);
 
-  const standardPaths = extractIssuePaths(standardResult);
+  const myPaths = extractIssuePaths(myResult);
   const zodPaths = extractIssuePaths(zodResult);
 
-  assert.deepEqual(standardPaths, zodPaths);
-  assert.deepEqual(standardPaths, [["a", "b", "c", "d"]]);
+  assert.deepEqual(myPaths, zodPaths);
+  assert.deepEqual(myPaths, [["a", "b", "c", "d"]]);
 });
 
 test("issue paths: array of objects match Zod", async () => {
@@ -573,15 +645,14 @@ test("issue paths: array of objects match Zod", async () => {
     { id: 3, name: 123 },
   ];
 
-  const standardResult =
-    await standardSchema["~standard"].validate(invalidValue);
+  const myResult = await standardSchema["~standard"].validate(invalidValue);
   const zodResult = await zodSchema["~standard"].validate(invalidValue);
 
-  const standardPaths = extractIssuePaths(standardResult);
+  const myPaths = extractIssuePaths(myResult);
   const zodPaths = extractIssuePaths(zodResult);
 
-  assert.deepEqual(standardPaths, zodPaths);
-  assert.deepEqual(standardPaths, [
+  assert.deepEqual(myPaths, zodPaths);
+  assert.deepEqual(myPaths, [
     [1, "id"],
     [2, "name"],
   ]);
@@ -599,17 +670,56 @@ test("issue paths: multiple errors in same object match Zod", async () => {
 
   const invalidValue = { a: "not a number", b: 123, c: "not a boolean" };
 
-  const standardResult =
-    await standardSchema["~standard"].validate(invalidValue);
+  const myResult = await standardSchema["~standard"].validate(invalidValue);
   const zodResult = await zodSchema["~standard"].validate(invalidValue);
 
-  const standardPaths = extractIssuePaths(standardResult);
+  const myPaths = extractIssuePaths(myResult);
   const zodPaths = extractIssuePaths(zodResult);
 
-  assert.deepEqual(standardPaths, zodPaths);
+  assert.deepEqual(myPaths, zodPaths);
   // Should have three errors at paths ["a"], ["b"], and ["c"]
-  assert.equal(standardPaths.length, 3);
-  assert.ok(standardPaths.some((p) => p.length === 1 && p[0] === "a"));
-  assert.ok(standardPaths.some((p) => p.length === 1 && p[0] === "b"));
-  assert.ok(standardPaths.some((p) => p.length === 1 && p[0] === "c"));
+  assert.equal(myPaths.length, 3);
+  assert.ok(myPaths.some((p) => p.length === 1 && p[0] === "a"));
+  assert.ok(myPaths.some((p) => p.length === 1 && p[0] === "b"));
+  assert.ok(myPaths.some((p) => p.length === 1 && p[0] === "c"));
+});
+
+test("issue paths: multiple errors in same set match Typia", async () => {
+  const standardSchema = schema<Set<number>>(
+    '{"type":"set","items":{"type":"number"}}',
+  );
+
+  const invalidValue = new Set([1, "a", 2, "b"]);
+
+  const myResult = await standardSchema["~standard"].validate(invalidValue);
+  const typiaResult =
+    await typiaValidateSet["~standard"].validate(invalidValue);
+
+  const myPaths = extractIssuePaths(myResult);
+  const typiaPaths = extractIssuePaths(typiaResult);
+
+  assert.deepEqual(myPaths, typiaPaths);
+});
+
+test("issue paths: multiple errors in same map match Typia", async () => {
+  const standardSchema = schema<Map<{ key: string }, number>>(
+    '{"type":"map","items":{"type":"array","additionalItems":false,"items":[{"type":"object","properties":{"key":{"type":"string"}},"required":["key"]},{"type":"number"}]}}',
+  );
+
+  const invalidValue = new Map<unknown, unknown>([
+    [{ key: "a" }, 1],
+    [1, 1],
+    [{ key: 1 }, 2],
+    [{ key: 1 }, "a"],
+    [{ key: "a" }, "a"],
+  ]);
+
+  const myResult = await standardSchema["~standard"].validate(invalidValue);
+  const typiaResult =
+    await typiaValidateMap["~standard"].validate(invalidValue);
+
+  const myPaths = extractIssuePaths(myResult);
+  const typiaPaths = extractIssuePaths(typiaResult);
+
+  assert.deepEqual(myPaths, typiaPaths);
 });

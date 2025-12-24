@@ -62,20 +62,19 @@ type TestSymbol = ExpectEqual<
   '{"error":"Symbols cannot be represented in JSON Schema"}'
 >;
 
-type TestBigInt = ExpectEqual<
-  TSToJSONSchema<bigint>,
-  '{"error":"BigInts cannot be represented in JSON Schema"}'
+type TestBigInt = ExpectEqual<TSToJSONSchema<bigint>, '{"type":"bigint"}'>;
+
+type TestBigIntLiteral = ExpectEqual<
+  TSToJSONSchema<1n>,
+  '{"type":"bigint","const":"1"}'
 >;
 
 type TestUndefined = ExpectEqual<
   TSToJSONSchema<undefined>,
-  '{"error":"Undefined cannot be represented in JSON Schema"}'
+  '{"type":"undefined"}'
 >;
 
-type TestVoid = ExpectEqual<
-  TSToJSONSchema<void>,
-  '{"error":"Void cannot be represented in JSON Schema"}'
->;
+type TestVoid = ExpectEqual<TSToJSONSchema<void>, "{}">;
 
 // ============================================================================
 // Arrays
@@ -111,6 +110,20 @@ type TestTupleWithLiterals = ExpectEqual<
 type TestArrayLike = ExpectEqual<
   TSToJSONSchema<ArrayLike<number>>,
   '{"type":"object","properties":{"length":{"type":"number"}},"patternProperties":{"^(?:-?(?:[1-9][0-9]{0,20}|0)(?:\\\\.[0-9]{0,5}[1-9])?|-[0-9](?:\\\\.[0-9]*[1-9])?e-(?:[7-9]|[1-9][0-9]+)|[0-9](?:\\\\.[0-9]*[1-9])?e\\\\+(?:2[1-9]|[3-9][0-9]|[1-9][0-9]{2,}))$":{"type":"number"}},"required":["length"]}'
+>;
+
+// ============================================================================
+// Collections
+// ============================================================================
+
+type TestSet = ExpectEqual<
+  TSToJSONSchema<Set<number>>,
+  '{"type":"set","items":{"type":"number"}}'
+>;
+
+type TestMap = ExpectEqual<
+  TSToJSONSchema<Map<{ a: 1 }, number>>,
+  '{"type":"map","items":{"type":"array","additionalItems":false,"items":[{"type":"object","properties":{"a":{"const":1}},"required":["a"]},{"type":"number"}]}}'
 >;
 
 // ============================================================================
